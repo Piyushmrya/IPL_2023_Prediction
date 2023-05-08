@@ -9,55 +9,54 @@ st.write("""
 
 # Data loading
 
-df2 = pd.read_csv('ipl_files/all_bowlers.csv')
-df3 = pd.read_csv('ipl_files/ipl_2023_ball.csv')
-df4 = pd.read_csv('ipl_files/ipl_2023_bat.csv')
-df5 = pd.read_csv('ipl_files/all_batters.csv')
+df1 = pd.read_csv('all_bowlers.csv')
+df2 = pd.read_csv('all_batters.csv')
+df3 = pd.read_csv('ipl_2023_ball.csv')
+df4 = pd.read_csv('ipl_2023_bat.csv')
 
-arr_bowlers = []
-for bowler in df2.bowler:
-    if bowler in list(df3.player):
-        arr_bowlers.append(1)
-    else:
-        arr_bowlers.append(0)
+
+# arr_bowlers = []
+# for bowler in df2.bowler:
+#     if bowler in list(df3.player):
+#         arr_bowlers.append(1)
+#     else:
+#         arr_bowlers.append(0)
         
-arr_batters = []
-for batter in df5.batter:
-    if batter in list(df4.player):
-        arr_batters.append(1)
-    else:
-        arr_batters.append(0)
+# arr_batters = []
+# for batter in df5.batter:
+#     if batter in list(df4.player):
+#         arr_batters.append(1)
+#     else:
+#         arr_batters.append(0)
 
-# Adding it to the dataframe        
+# # Adding it to the dataframe        
 
-df2['bowler_2023'] = arr_bowlers
-df5['batter_2023'] = arr_batters
+# df2['bowler_2023'] = arr_bowlers
+# df5['batter_2023'] = arr_batters
 
-#Encoding Bowlers and batters names
+# #Encoding Bowlers and batters names
 
-from sklearn import preprocessing
+# from sklearn import preprocessing
 
-le = preprocessing.LabelEncoder()
-le = le.fit(df2['bowler'])
-df2['bowler_le'] = le.transform(df2['bowler'])
+# le = preprocessing.LabelEncoder()
+# le = le.fit(df2['bowler'])
+# df2['bowler_le'] = le.transform(df2['bowler'])
 
-le2 = le.fit(df5['batter'])
-df5['batter_le'] = le.transform(df5['batter'])
+# le2 = le.fit(df5['batter'])
+# df5['batter_le'] = le.transform(df5['batter'])
 
 #Group them 
 
-grouped2 = df2.groupby(df2.batter)
-grouped5 = df5.groupby(df5.bowler)
+grouped1 = df1.groupby(df1.batter)
+grouped2 = df2.groupby(df2.bowler)
 
 # Random 
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import make_scorer, accuracy_score
-d2 = pd.DataFrame()
-d5 = pd.DataFrame()
-counts2 = df2.batter.value_counts()
-counts5 = df5.bowler.value_counts()
+counts_batter = df1.batter.value_counts()
+counts_bowler = df2.bowler.value_counts()
 
 # Getting user input to select players 
 
@@ -76,32 +75,33 @@ def pred_fun():
     non_st = 1
     bowl_pl = 0
     run = 0
-    for over in range(1,6):
-        for ballnumber in range(1,7): 
-            if bowling[over] in list(df5.bowler) and counts5[bowling[over]] > 5 and batting[bat_pl] in list(df5.batter):
-                df_g = grouped5.get_group(bowling[over])
-                x = df_g.drop(['team',"batter",'bowler','isWicketDelivery'], axis=1)
-    #             print(x)
+    for over in range(0,6):
+        for ballnumber in range(1,7):
+            
+            if bowling[bowl_pl] in list(df2.bowler) and counts_bowler[bowling[bowl_pl]] > 5 and batting[bat_pl] in list(df2.batter):
+                df_g = grouped2.get_group(bowling[bowl_pl])
+                x = df_g.drop(['batter','team','bowler','isWicketDelivery'], axis=1)
                 y = df_g['isWicketDelivery']
                 clf = RandomForestClassifier()
                 clf.fit(x, y)
-                isWic = clf.predict([[innings, over, ballnumber, df5[df5['batter']==batting[bat_pl]].reset_index(drop=True)['batter_2023'][0], df5[df5['batter']==batting[bat_pl]].reset_index(drop=True)['batter_le'][0]]])
+                isWic = clf.predict([[innings, over, ballnumber, df2[df2['batter']==batting[bat_pl]].reset_index(drop=True)['batter_avg_wic_per_ball'][0] ]])
+
             if isWic == 1:
                 bat_pl = max(bat_pl, non_st) + 1
-    #             print('wic')
+                print('wic')
                 isWic = 0
             else:
-                if batting[bat_pl] in list(df2.batter) and counts2[batting[bat_pl]] > 5 and bowling[bowl_pl] in list(df2.bowler):
-                    df_g = grouped2.get_group(batting[bat_pl])
+                if batting[bat_pl] in list(df1.batter) and counts_batter[batting[bat_pl]] > 5 and bowling[bowl_pl] in list(df1.bowler):
+                    df_g = grouped1.get_group(batting[bat_pl])
                     x = df_g.drop(['team','batter','bowler','isWicketDelivery','batsman_run'], axis=1)
                     y = df_g['batsman_run']
                     clf2 = RandomForestClassifier()
                     clf2.fit(x,y)
-                    run = clf2.predict([[ innings, over, ballnumber, df2[df2['bowler']==bowling[bowl_pl]].reset_index(drop=True)['bowler_2023'][0], df2[df2['bowler']==bowling[bowl_pl]].reset_index(drop=True)['bowler_le'][0] ]])                     
-    #                 print(run, batting[bat_pl], ballnumber)
+                    run = clf2.predict([[ innings, over, ballnumber, df1[df1['bowler']==bowling[bowl_pl]].reset_index(drop=True)['avg_runs_per_ball'][0] ]])                     
+                    print(run, batting[bat_pl], ballnumber)
                     runs += float(run)
-                else :
-                    runs+=(10.0/6.0)
+                else:
+                    runs += 10.0/6.0
             if run % 2 == 1:
                 temp = bat_pl
                 bat_pl = non_st
@@ -109,8 +109,8 @@ def pred_fun():
             if ballnumber == 6:
                 temp = bat_pl
                 bat_pl = non_st
-                non_st = temp  
-        bowl_pl +=1  
+                non_st = temp    
+        bowl_pl += 1
     return runs
 
 
